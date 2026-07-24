@@ -30,7 +30,10 @@
       <img id="pin-badge-qr" alt="QR code" style="border-radius:8px; background:#fff; padding:4px;" />
       <div style="font-size:0.9rem;">Code : <span id="pin-badge-code" class="gold" style="letter-spacing:0.18em;">······</span></div>
     </div>
-    <button id="btn-tts" class="btn secondary" style="position:fixed; top:14px; right:14px; z-index:60; font-size:0.85rem; padding:8px 14px;">🔊 Voix</button>
+    <div style="position:fixed; top:14px; right:14px; z-index:60; display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+      <button id="btn-tts" class="btn secondary" style="font-size:0.85rem; padding:8px 14px;">🔊 Voix</button>
+      <select id="voice-select" title="Choisir la voix" style="display:none; font-family:'Inter'; font-size:0.72rem; max-width:200px; padding:5px 7px; border-radius:8px; border:1px solid rgba(255,255,255,0.22); background:rgba(20,10,40,0.9); color:#fff;"></select>
+    </div>
     <header class="hero">
       <div class="kicker">Soirée Quiz</div>
       <div class="names display" id="hero-names">Soirée Quiz</div>
