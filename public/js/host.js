@@ -9,13 +9,58 @@
   const TTS = "speechSynthesis" in window;
   let ttsEnabled = localStorage.getItem("quiz_tts") !== "off"; // activé par défaut
   let frVoice = null;
+
+  // Note qualité d'une voix : on privilégie les voix « naturelles » / en ligne
+  // (Google, Microsoft Natural…) plutôt que la voix robotique par défaut.
+  function scoreVoice(v) {
+    const n = (v.name || "").toLowerCase();
+    let s = 0;
+    if (/fr[-_]?fr/i.test(v.lang)) s += 3;
+    else if (v.lang && v.lang.toLowerCase().startsWith("fr")) s += 2;
+    if (n.includes("natural") || n.includes("naturel")) s += 8;
+    if (n.includes("google")) s += 5;
+    // Voix françaises « neurales » de Microsoft (Edge/Windows)
+    if (/(denise|henri|éloise|eloise|vivienne|rémy|remy|brigitte|alain|yves|jacqueline|coralie)/.test(n)) s += 4;
+    if (v.localService === false) s += 2; // voix en ligne = souvent meilleures
+    if (n.includes("espeak") || n.includes("compact")) s -= 6;
+    return s;
+  }
   function pickVoice() {
     if (!TTS) return;
     const voices = speechSynthesis.getVoices() || [];
-    frVoice =
-      voices.find((v) => /^fr[-_]?fr/i.test(v.lang)) ||
-      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("fr")) ||
-      null;
+    const fr = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith("fr"));
+    const list = (fr.length ? fr : voices).slice().sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    frVoice = list[0] || null;
+    // Préférence sauvegardée par l'utilisateur ?
+    const saved = localStorage.getItem("quiz_voice");
+    if (saved) {
+      const m = voices.find((v) => v.name === saved);
+      if (m) frVoice = m;
+    }
+    populateVoiceSelect(fr);
+  }
+  function populateVoiceSelect(frVoices) {
+    const sel = document.getElementById("voice-select");
+    if (!sel) return;
+    if (!frVoices || !frVoices.length) { sel.style.display = "none"; return; }
+    // Évite de reconstruire à chaque appel
+    if (sel.dataset.count === String(frVoices.length)) {
+      sel.value = frVoice ? frVoice.name : "";
+      return;
+    }
+    sel.dataset.count = String(frVoices.length);
+    sel.innerHTML = "";
+    frVoices
+      .slice()
+      .sort((a, b) => scoreVoice(b) - scoreVoice(a))
+      .forEach((v) => {
+        const o = document.createElement("option");
+        o.value = v.name;
+        o.textContent = v.name.replace(/microsoft |google /i, "").slice(0, 28);
+        sel.appendChild(o);
+      });
+    sel.value = frVoice ? frVoice.name : "";
+    sel.style.display = ttsEnabled ? "block" : "none";
   }
   if (TTS) {
     pickVoice();
@@ -30,7 +75,8 @@
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "fr-FR";
     if (frVoice) u.voice = frVoice;
-    u.rate = 0.98;
+    u.rate = 1.0;
+    u.pitch = 1.05;
     speechSynthesis.speak(u);
   }
   function speakQuestion(q) {
@@ -47,8 +93,25 @@
     b.textContent = ttsEnabled ? "🔊 Voix" : "🔇 Voix";
     b.style.opacity = ttsEnabled ? "1" : "0.55";
     if (!TTS) { b.style.display = "none"; }
+    const sel = document.getElementById("voice-select");
+    if (sel) sel.style.display = ttsEnabled && sel.options.length ? "block" : "none";
   }
   updateTtsButton();
+
+  // Choix manuel de la voix
+  (function wireVoiceSelect() {
+    const sel = document.getElementById("voice-select");
+    if (!sel) return;
+    sel.addEventListener("change", () => {
+      const voices = TTS ? speechSynthesis.getVoices() : [];
+      const v = voices.find((x) => x.name === sel.value);
+      if (v) {
+        frVoice = v;
+        localStorage.setItem("quiz_voice", v.name);
+        speak("Voici ma voix pour le quiz."); // aperçu
+      }
+    });
+  })();
 
   const TILES = [
     { cls: "red", shape: "triangle" },
